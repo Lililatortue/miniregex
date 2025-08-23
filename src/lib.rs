@@ -171,9 +171,12 @@ mod tests {
         
         assert_eq!(false, test_cursor.match_full("abc"));
         let comment_line_graph = Parser::new(r"//\(.*\)").parse();
-        let test_cursor = comment_line_graph.cursor();
+        let true_test_cursor = comment_line_graph.cursor();
+        let bad_test_cursor  = comment_line_graph.cursor();
         
-        assert_eq!(true,test_cursor.match_full("//( sadfjlsdf )"))
+        assert_eq!(true,true_test_cursor.match_full("//( sadfjlsdf )"));
+        assert_eq!(false,bad_test_cursor.match_full("//(sajflsaf"));
+
     }
     use super::*;
     
