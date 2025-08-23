@@ -30,3 +30,4 @@ P.S: lazy() should always be used since a dfa can become extremely big extremely
 - [ ] implementation of cursor for dfa
 - [ ] mmap implementation for lazydfa ( soon )
 - [ ] SIMD optimisation   ( later date )
+
