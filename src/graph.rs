@@ -30,7 +30,7 @@ pub enum State {
 
 
 #[derive(Debug)]
-enum DanglingOuts {
+pub enum DanglingOuts {
     Out1(Id), 
     Out2(Id),
 }
@@ -44,6 +44,13 @@ pub struct Frag {
 
 
 #[derive(Debug)]
+/// The NFA in question
+/// contains two variable
+/// states acts as an arena 
+/// the State in states contain one or two pointers to another adresse
+/// The pointers default to 0 when first initialise
+/// it also contains a variable start 
+/// start is where the first condition starts
 pub struct Graph {
     start: Id,
     states: Vec<State>,
@@ -53,6 +60,9 @@ impl Graph {
     pub fn init()->Graph{
         Graph{start:0,states: vec![]}
     }
+    /// Quick implementation of Russ postfix parser
+    /// My version uses a recursive descent to parse
+    /// I keep it tho for the tests 
     pub fn new(postfix: &str)->Option<Self> {
         let mut graph = Graph {start:0 , states:vec![]};
         let mut stack:Vec<Frag> = vec![];       
@@ -133,28 +143,48 @@ impl Graph {
         }
         Some(graph)
     }   
-    // Creates a states and returns its position 
-    // within the vector
+
+
+
+    /// Adds a state to the graph
+    /// and returns its index
+    /// 
     fn malloc(&mut self, state: State)->Id{
         let start = self.states.len();
         self.states.push(state);
         start
     }
 
+
+    /// Adds state with a rule
+    /// points to index 0 when initialise
+    /// 
     pub fn literal(&mut self,c: char)->Frag{
-        let start = self.malloc(State::Out(Rule::Equal(c),0));
+        let start = match c {
+            '.'=> self.malloc(State::Out(Rule::Any,0)), 
+            _ =>self.malloc(State::Out(Rule::Equal(c),0)),
+        };
+
         let out = vec![DanglingOuts::Out1(start)];
 
         Frag{adresse: start, goto: out}
     }
 
+    /// Grabs two frags and connects them togheter
+    /// grabs pointer of frag 1 and connects it to index of frag 2
+    ///
     pub fn concatenation(&mut self,e1: Frag, e2: Frag) -> Frag{
-
-
         self.patch(&e1.goto,e2.adresse);
         Frag{adresse:e1.adresse, goto:e2.goto}
     }
-
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
     pub fn one_or_more(&mut self,mut e1:Frag)-> Frag {//+
         let split_adresse = self.malloc(State::Split(e1.adresse, 0));
                 
@@ -162,7 +192,16 @@ impl Graph {
         let out = vec![DanglingOuts::Out2(split_adresse)];
         Frag{adresse:e1.adresse, goto: out}    
     }
-    
+
+
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
     pub fn zero_or_more(&mut self,mut e1:Frag)-> Frag {//*
         let start = self.malloc(State::Split(e1.adresse, 0));
         
@@ -171,13 +210,30 @@ impl Graph {
         Frag{adresse: start, goto:out}
     }
 
+
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
     pub fn one_or_zero(&mut self,mut e1: Frag)->Frag {//?
         let start = self.malloc(State::Split(e1.adresse, 0));
         
         e1.goto.push(DanglingOuts::Out2(start));
         Frag{adresse: start,goto:e1.goto}
     }
+    
 
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
     pub fn alternation(&mut self,mut e1:Frag, e2:Frag)->Frag {
 
         let start = self.malloc(State::Split(e1.adresse, e2.adresse));
@@ -185,7 +241,15 @@ impl Graph {
         e1.goto.extend(e2.goto);
         Frag{adresse: start, goto: e1.goto}
     }
+    
 
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
+    ///
     pub fn finish(mut self, e: Frag)->Graph {
         let match_ = self.malloc(State::Match);
         self.patch(&e.goto, match_); 
