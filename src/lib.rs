@@ -112,14 +112,15 @@ impl<'a> Parser<'a> {
 
         let Some(c)=self.next() else {return};
         match (c , self.iter.peek()) {
-            ('\\', Some(c @ ('('|')')))=> {
+            ('\\', Some(c @ ('('|')'|'*')))=> {
 
                 stack.push(self.graph.literal(*c));
             }
 
             (c @ ('a'..='z'|
                   'A'..='Z'|
-                  '1'..='9'),_)=> 
+                  '1'..='9'|
+                  '/'|'.'   ),_)=> 
             {
 
                 stack.push(self.graph.literal(c));
@@ -167,8 +168,12 @@ mod tests {
         let graph = Parser::new("a(bb)+|b").parse();
         let test_cursor = graph.cursor();
         
-        assert_eq!(false, test_cursor.match_full("abc"))
-
+        
+        assert_eq!(false, test_cursor.match_full("abc"));
+        let comment_line_graph = Parser::new(r"//\(.*\)").parse();
+        let test_cursor = comment_line_graph.cursor();
+        
+        assert_eq!(true,test_cursor.match_full("//( sadfjlsdf )"))
     }
     use super::*;
     
