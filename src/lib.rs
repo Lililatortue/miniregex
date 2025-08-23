@@ -227,7 +227,8 @@ mod tests {
     use super::*;
     #[test]
 
-    pub fn test_nfa_cursor(){
-    }
+
+
+    pub fn test_nfa(){}
     
 }
