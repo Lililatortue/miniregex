@@ -162,14 +162,20 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::graph::Graph;
+    use super::*;
     #[test]
     pub fn test(){
-        let graph = Parser::new("a(bb)+|b").parse();
-        let test_cursor = graph.cursor();
-        
-        
-        assert_eq!(false, test_cursor.match_full("abc"));
+        let graph = Parser::new("a(bb)+|d").parse();
+        let bad_test_cursor_one = graph.cursor();
+        let bad_test_cursor_two = graph.cursor();
+        let true_test_cursor_one = graph.cursor();
+        let true_test_cursor_two = graph.cursor();
+            
+        assert_eq!(false,bad_test_cursor_one.match_full("abc"));
+        assert_eq!(false,bad_test_cursor_two.match_full("fff"));
+        assert_eq!(true, true_test_cursor_one.match_full("ddddd"));
+        assert_eq!(true, true_test_cursor_two.match_full("abbhf"));
+
         let comment_line_graph = Parser::new(r"//\(.*\)").parse();
         let true_test_cursor = comment_line_graph.cursor();
         let bad_test_cursor  = comment_line_graph.cursor();
@@ -178,6 +184,5 @@ mod tests {
         assert_eq!(false,bad_test_cursor.match_full("//(sajflsaf"));
 
     }
-    use super::*;
     
 }
