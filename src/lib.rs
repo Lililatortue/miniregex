@@ -54,14 +54,6 @@ macro_rules! make_dfa {
     }};
 }
 
-
-//#[macro_export]
-//macro_rules! make_lexical_transducer {
-    //($ (($x: expr, $y:expr)),+ ) => {
-    //   let mut FSA
-  //  };
-//}
-
 pub struct Parser<'a, T: Graph> {
     buffer: Option<char>,
     graph: T,

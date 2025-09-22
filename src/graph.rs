@@ -1,7 +1,5 @@
 
-
-
-//description:
+///description:
 ///trait that allows function to be read by Recursive Descent Parser in lib.rs
 ///
 ///
@@ -149,13 +147,14 @@ pub enum DanglingOuts {
     Out2(Id),
 }
 
-pub type Id = usize;
+pub(crate)type Id = usize;
 
 #[derive(Debug)]
 pub struct Frag {
    pub adresse:Id,
    pub goto: Vec<DanglingOuts>
 }
+
 
 //---------------Display Implimentation----------------//afs/
 
