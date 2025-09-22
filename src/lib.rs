@@ -23,7 +23,7 @@ macro_rules! make_fsa {
                 }
                 s.push_str($x);
             )+
-            Parser::new(&s,$crate::graph::FSA::init()).parse()      
+            Parser::new(&s,$crate::graph::fsa::FSA::init()).parse()      
     }};
 }
 

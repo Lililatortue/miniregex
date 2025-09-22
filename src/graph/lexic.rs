@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use crate::graph::{Id, Rule, FSA};
-
-
-
-
+use crate::graph::{Id, fsa::FSA};
 
 
 
@@ -17,6 +13,7 @@ struct Lexicon {
 
 
 impl Lexicon {
+
     pub fn init()->Lexicon {
         Lexicon {lexicon: HashMap::new(), states: vec![]}
     }
@@ -51,6 +48,7 @@ struct LexiconCursor{
 
 ///Restarted automaticly if it reaches an invalid and match state, it modifies its internal state
 struct LexiconRestartCursor{
+
 
 }
 
