@@ -1,5 +1,7 @@
-pub mod lexic;
-pub mod fsa;
+///description:
+///trait that allows function to be read by Recursive Descent Parser in lib.rs
+///
+///
 pub trait Graph: Sized {
     ///description:
     ///
@@ -112,6 +114,10 @@ impl Rule {
             Self::Equal(x)=>{*x == c},
         }
     }
+
+    pub fn get_rule(&self)-> &Self {
+        &self
+    }
 }
 
 #[derive(Debug)]
@@ -120,7 +126,7 @@ pub enum DanglingOuts {
     Out2(Id),
 }
 
-type Id = usize;
+pub type Id = usize;
 #[derive(Debug)]
 pub struct Frag {
    pub adresse:Id,

@@ -1,6 +1,13 @@
-use crate::graph::*;
+mod nfa;
+mod dfa;
+mod graph;
+pub mod cursor;
 
-pub mod graph;
+pub use nfa::FSA;
+pub use dfa::{DFA, MinimalDFA};
+pub use cursor::{FSACursor,FSARestartCursor};
+
+use graph::*;
 /*
 pub enum Token {
     Alt,            // Concat  | '|' Concat
@@ -23,7 +30,7 @@ macro_rules! make_fsa {
                 }
                 s.push_str($x);
             )+
-            Parser::new(&s,$crate::graph::fsa::FSA::init()).parse()      
+            Parser::new(&s,nfa::FSA::init()).parse()      
     }};
 }
 
@@ -55,7 +62,6 @@ impl<'a, T:Graph> Iterator for Parser<'a, T> {
 
 
 
-use crate::graph::Frag;
 impl<'a, T: Graph> Parser<'a, T> {
 //------------------------logic------------------------//
     fn alternation(&mut self)->Vec<Frag> {
@@ -205,11 +211,11 @@ mod tests {
     use super::*;
     #[test]
     pub fn test(){
-        let graph = make_fsa!("a(bb)+|d");
-        let bad_test_cursor_one = graph.cursor();
-        let bad_test_cursor_two = graph.cursor();
-        let true_test_cursor_one = graph.cursor();
-        let true_test_cursor_two = graph.cursor();
+        let fsa = make_fsa!("a(bb)+|d");
+        let bad_test_cursor_one = fsa.cursor();
+        let bad_test_cursor_two = fsa.cursor();
+        let true_test_cursor_one = fsa.cursor();
+        let true_test_cursor_two = fsa.cursor();
             
         assert_eq!(false,bad_test_cursor_one.match_full("abc"));
         assert_eq!(false,bad_test_cursor_two.match_full("fff"));

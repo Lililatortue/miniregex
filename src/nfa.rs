@@ -1,5 +1,5 @@
 use crate::graph::*;
-
+use crate::cursor::{FSACursor,FSARestartCursor};
 
 #[derive(Debug)]
 pub enum State {
@@ -16,8 +16,7 @@ pub enum State {
 #[derive(Debug)]
 pub struct FSA {
     start: Id,
-    states: Vec<State>,
-    
+    states: Vec<State>,  
 }
 
 impl FSA {
@@ -46,10 +45,12 @@ impl FSA {
     ///return:
     ///&vec-> the vec itself
     ///
-    pub fn get_states(&self)-> &Vec<State> {
+    pub fn get_states(&self)-> &[State] {
         &self.states
     }
-
+    pub fn get_start(&self)-> &State {
+        &self.states[self.start]
+    }
     ///description:
     ///creates a cursor
     ///A cursor allows to use the graph and check if a string matches the FSA
@@ -58,9 +59,7 @@ impl FSA {
     ///FSACursor
     ///
     pub fn cursor(&self)-> FSACursor<'_>{
-        let mut v = Vec::new();
-        v.push(&self.states[self.start]);
-        FSACursor {graph:self, rules:v }
+        FSACursor::init(self)
     }
 
     ///description:
@@ -71,11 +70,47 @@ impl FSA {
     ///return:
     ///FSARestartCursor
     ///
-    pub fn restart_cursor(&self) -> FSARestartCursor<'_>{
-        FSARestartCursor (self.cursor())
+    pub fn restart_cursor(&self) -> crate::nfa::FSARestartCursor<'_>{
+        FSARestartCursor::init(self.cursor())
+    }
+
+    ///description
+    ///transformes nfa into dfa
+    ///
+    ///parameters self
+    ///
+    pub(crate)fn determinize(self)->crate::dfa::DFA {
+    
+    }
+
+    pub(crate) fn into_iter(self)->self {
+        IntoIterNFA (self);
     }
 }
 
+pub(crate) struct IntoIterNFA(FSA);
+impl Iterator for IntoIterNFA {
+    type Item = Vec<State>;
+    ///description
+    ///Never returns invalid just returns states Out and States Match
+    ///
+    ///parameters
+    ///
+    ///
+    ///return
+    ///
+    ///
+    fn next(&mut self)->Option<Self::Item> {
+        let list = vec![];
+
+
+        if list.is_empty(){ 
+            None
+        } else {
+            Some(list)
+        }
+    }
+}
 
 
 
@@ -225,153 +260,7 @@ impl Graph for FSA {
     }
 }
 
-//------------------Simulating NFA------------------------//
 
-//reference a state and its literal compares and returns a result
-
-pub enum CursorResult {
-    Match,
-    Valid,
-    Invalid,
-}
-pub struct FSACursor<'a> {
-    graph: &'a FSA,
-    rules:Vec<&'a State> 
-}
-
-impl<'a> FSACursor<'a> {
-    
-    fn handle_split(&self,state:&'a State,c:char, list:&mut Vec<&'a State>){
-        match state {
-            State::Split(id1, id2)=> {      
-                self.handle_split(&self.graph.states[*id1],c,list);
-                self.handle_split(&self.graph.states[*id2],c,list);
-            }
-            State::Out(rule,id)=> { 
-                if rule.match_eq(c) { 
-                    list.push(&self.graph.states[*id]);
-                }
-            }
-            _ => list.push(state), 
-        }
-    }
-
-    ///description:
-    ///moves the FSACursor and transformes it into FSARestartCursor
-    ///
-    ///return: 
-    ///FSARestartCursor
-    ///
-    pub fn restartable(self)->FSARestartCursor<'a>{
-        FSARestartCursor(self)
-    }
-
-    ///description:
-    ///Method that compares a character, if the comparation is equal then cursor goes to the next
-    ///state, if it finds a match or if it is invalid, it keeps the state as it is 
-    ///
-    ///parameters:
-    ///c:char -> character to compares
-    ///
-    ///return: 
-    ///CursorResult (Valid, Invalid, Match)
-    ///
-    pub fn match_eq(&mut self,c:char)->CursorResult {
-        let mut list = Vec::new();
-        for &state in self.rules.iter() {
-            match state {
-                State::Split(_,_)=>{ 
-                    self.handle_split(state, c, &mut list);//create states 
-                }
-                State::Out(rule,id)=>{
-                    if rule.match_eq(c) {
-                        list.push(&self.graph.states[*id])
-                    }; 
-                }
-                State::Match=> return CursorResult::Match, 
-            }
-        }
-        
-        if list.is_empty() {
-            CursorResult::Invalid
-        } else {
-            self.rules = list;
-            CursorResult::Valid
-        }
-    }
-
-    
-    pub fn match_full(mut self, s:&str)->bool{
-        for c in s.chars() {
-            let result = self.match_eq(c);
-            match result {
-                CursorResult::Invalid=>return false,
-                CursorResult::Match  =>return true,
-                CursorResult::Valid  =>continue,
-            }
-        }
-        //WARNING: maybe needs a last check on self.rules
-        false
-    }
-}
-
-
-///description:
-///Internally mutates the cursor when an Invalid Or Match states occurs 
-///
-pub struct FSARestartCursor<'a>(FSACursor<'a>);
-
-impl<'a> FSARestartCursor<'a> { 
-    ///description:
-    ///Method that will restart cursor to the beggining of the graph if state is invalid or a match
-    ///
-    ///parameters: 
-    ///c: char  -> the character that will be compared 
-    ///
-    ///return: 
-    ///CursorResult (Valid, Invalid, Match)
-    ///
-    pub fn match_eq(&mut self, c:char)->CursorResult{
-        let state = self.0.match_eq(c);
-        match state {
-            CursorResult::Invalid | CursorResult::Match => {
-                self.restart();
-            }
-            _=>(),
-        }
-        state
-    }
-
-    ///description:
-    ///Method that will match a full string if it finds an instance of 
-    ///the word it will match it
-    ///
-    ///parameters: 
-    ///s:&str     -> str to be compared
-    ///
-    ///returns: bool (invalid->false, match->true)
-    ///
-    pub fn match_full(&mut self, s:&str)->bool{
-        for c in s.chars() {
-            let state = self.match_eq(c);
-            match state {
-                CursorResult::Invalid => return false,
-                CursorResult::Match   => return true,
-                CursorResult::Valid   => continue,
-            }
-        }
-        return false;
-    }
-
-    ///description:
-    ///restart the cursor to the beggining of the graph
-    ///
-    ///returns: void
-    ///
-    pub fn restart(&mut self){
-        self.0 = self.0.graph.cursor(); 
-    }
-}
 
 
 //---------------------test---------------------------//
