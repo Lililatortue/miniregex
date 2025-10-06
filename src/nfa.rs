@@ -1,5 +1,7 @@
-use crate::graph::*;
+use crate::{graph::*, DFA};
 use crate::cursor::{FSACursor,FSARestartCursor};
+use crate::builders::DfaBuilder;
+
 
 #[derive(Debug)]
 pub enum State {
@@ -14,20 +16,20 @@ pub enum State {
 ///A graph that in which as rules to connect to next node
 ///
 #[derive(Debug)]
-pub struct FSA {
+pub struct NFA {
     start: Id,
     states: Vec<State>,  
 }
 
-impl FSA {
+impl NFA {
     ///description:
     ///Default initialisation of FSA
     ///
     ///return:
     ///FSA{start: 0 , states: empty}
     ///
-    pub fn init()->FSA{
-        FSA{start:0,states: vec![]}
+    pub fn init()->NFA{
+        NFA{start:0,states: vec![]}
     }
        
     ///description:
@@ -42,14 +44,14 @@ impl FSA {
         start
     }
 
-    ///return:
-    ///&vec-> the vec itself
-    ///
-    pub fn get_states(&self)-> &[State] {
+    pub(crate)fn get_states(&self)-> &[State] {
         &self.states
     }
     pub fn get_start(&self)-> &State {
         &self.states[self.start]
+    }
+    pub(crate)fn get_start_id(&self)->usize {
+        self.start
     }
     ///description:
     ///creates a cursor
@@ -74,53 +76,22 @@ impl FSA {
         FSARestartCursor::init(self.cursor())
     }
 
-    ///description
-    ///transformes nfa into dfa
-    ///
-    ///parameters self
-    ///
-    pub(crate)fn determinize(self)->crate::dfa::DFA {
-    
-    }
-
-    pub(crate) fn into_iter(self)->self {
-        IntoIterNFA (self);
-    }
-}
-
-pub(crate) struct IntoIterNFA(FSA);
-impl Iterator for IntoIterNFA {
-    type Item = Vec<State>;
-    ///description
-    ///Never returns invalid just returns states Out and States Match
-    ///
-    ///parameters
-    ///
-    ///
-    ///return
-    ///
-    ///
-    fn next(&mut self)->Option<Self::Item> {
-        let list = vec![];
-
-
-        if list.is_empty(){ 
-            None
-        } else {
-            Some(list)
-        }
-    }
+    //pub(crate)fn iter_dfs(&self)->DFA<'_> {
+        //DfaBuilder::init(self).into_dfa()
+    //}
 }
 
 
 
-impl Graph for FSA {
+
+
+impl Graph for NFA {
     ///description:
     ///Adds a literal to states vector.
     ///A literal is a node that isnt connected to any other node 
     ///
     ///parameters:
-    ///c:char -> the rule IMPORTANT: if . it means any look at README to see supported Char
+    ///c:char -> the rule IMPORTANT: if . it means any look at README to see supported Characters
     ///
     ///return: 
     ///Frag { adresse: (the index in states), goto:(None)}
@@ -261,14 +232,6 @@ impl Graph for FSA {
 }
 
 
-
-
-//---------------------test---------------------------//
-#[cfg(test)]
-mod test {
-    use super::*;
-    
-}
 
 
 

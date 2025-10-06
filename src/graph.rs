@@ -133,4 +133,16 @@ pub struct Frag {
    pub goto: Vec<DanglingOuts>
 }
 
+//---------------Display Implimentation----------------//afs/
+
+use std::fmt;
+impl fmt::Display for Rule {
+
+    fn fmt(&self, f: &mut fmt::Formatter)-> fmt::Result{
+        match self {
+            Rule::Equal(r)=> write!(f, "Equal-> {}", r),
+            Rule::Any     => write!(f, "Any"),
+        }
+    }
+}
 

@@ -1,10 +1,12 @@
 mod nfa;
 mod dfa;
+mod fst;
 mod graph;
 pub mod cursor;
+mod builders;
 
-pub use nfa::FSA;
-pub use dfa::{DFA, MinimalDFA};
+pub use nfa::NFA;
+pub use dfa::{DFA};
 pub use cursor::{FSACursor,FSARestartCursor};
 
 use graph::*;
@@ -18,9 +20,17 @@ pub enum Token {
 }
 */
 
-//a macro that takes multiple strings and creates one FSA
+///description:
+///takes multiple strings and creates one big nfa
+///
+///parameters:
+///one or more strings
+///
+///return
+///NFA
+///
 #[macro_export]
-macro_rules! make_fsa {
+macro_rules! make_nfa {
     ($ ( $x:expr ),+ ) => {{
         
             let mut s = String::new();
@@ -30,11 +40,9 @@ macro_rules! make_fsa {
                 }
                 s.push_str($x);
             )+
-            Parser::new(&s,nfa::FSA::init()).parse()      
+            $crate::Parser::new(&s,$crate::nfa::NFA::init()).parse()      
     }};
 }
-
-
 
 //#[macro_export]
 //macro_rules! make_lexical_transducer {
@@ -42,10 +50,6 @@ macro_rules! make_fsa {
     //   let mut FSA
   //  };
 //}
-
-
-
-
 pub struct Parser<'a, T: Graph> {
     buffer: Option<char>,
     graph: T,
@@ -210,8 +214,8 @@ impl<'a, T: Graph> Parser<'a, T> {
 mod tests {
     use super::*;
     #[test]
-    pub fn test(){
-        let fsa = make_fsa!("a(bb)+|d");
+    pub fn test_nfa_cursor(){
+        let fsa = make_nfa!("a(bb)+|d");
         let bad_test_cursor_one = fsa.cursor();
         let bad_test_cursor_two = fsa.cursor();
         let true_test_cursor_one = fsa.cursor();
@@ -223,12 +227,12 @@ mod tests {
         assert_eq!(true, true_test_cursor_two.match_full("abbhf"));
 
         
-        let comment_line_graph = make_fsa!(r"//\(.*\)", "lol");
-        let true_test_cursor = comment_line_graph.cursor();
-        let bad_test_cursor  = comment_line_graph.cursor();
-        
-        assert_eq!(true,true_test_cursor.match_full("//( sadfjlsdf )"));
-        assert_eq!(false,bad_test_cursor.match_full("//(sajflsaf"));
+        let comment_line_graph = make_nfa!(r"//\(.*\)", "lol");
+        let mut test_restart_cursor = comment_line_graph.restart_cursor();
+       
+        assert_eq!(true, test_restart_cursor.match_full("//( sadfjlsdf )"));
+        assert_eq!(true, test_restart_cursor.match_full("lol"));
+        assert_eq!(false,test_restart_cursor.match_full("//(sajflsaf"));
 
     }
     

@@ -1,4 +1,4 @@
-use crate::nfa::{FSA,State};
+use crate::nfa::{NFA,State};
 //reference a state and its literal compares and returns a result
 
 pub enum CursorResult {
@@ -7,13 +7,13 @@ pub enum CursorResult {
     Invalid,
 }
 pub struct FSACursor<'a> {
-    graph: &'a FSA,
+    graph: &'a NFA,
     rules:Vec<&'a State> 
 }
 
 impl<'a> FSACursor<'a> {
 
-    pub(crate)fn init(fsa:&'a FSA)->Self {
+    pub(crate)fn init(fsa:&'a NFA)->Self {
         FSACursor {graph:fsa, rules:vec![fsa.get_start()]}
     }
 
