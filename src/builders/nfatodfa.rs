@@ -1,20 +1,16 @@
 use std::collections::{BTreeMap};
+use std::fmt::{self, Formatter};
 use crate::{graph::Rule,NFA};
 use crate::iterator::{NfaBfsIter,IterResult};
 
 
-
 //plain old data
 //used for this transformation
-#[derive(Debug)]
-enum Row<'a> {
-    Match,
-    Out(&'a Rule,usize),
-}
-type Table<'a> = Vec<Vec<Row<'a>>>;
+struct DFA<'a>(Vec<(Vec<(&'a Rule,usize)>,bool)>);
 
 
 
+//-------------------------- algorithm -----------------------//
 /// description:
 /// Creates a dfa from a reference to an nfa
 /// 
@@ -25,15 +21,15 @@ type Table<'a> = Vec<Vec<Row<'a>>>;
 /// Table (Vec<Vec<&'a rules, usize >>) 
 /// where lifetime a is the lifetime of nfa
 ///
-pub fn into_dfa<'a>(nfa: &'a NFA)->Table<'a>{
+fn into_dfa<'a>(nfa: &'a NFA)->DFA<'a>{
     let Some(list) = NfaBfsIter::from_index(nfa,nfa.get_start_id()) else {
         panic!("Error: Cannot build dfa from empty nfa"); 
     };
-    let mut bucket = Bucket(BTreeMap::new());
+    let mut bucket = Bucket(BTreeMap::new(),false);
     
     for result in list {
         match result {
-            IterResult::Match=>(),
+            IterResult::Match=> bucket.1 = true,
             IterResult::Out(r, i)=> bucket.0
                                           .entry(r)
                                           .or_default()
@@ -41,7 +37,7 @@ pub fn into_dfa<'a>(nfa: &'a NFA)->Table<'a>{
         }
     }
 
-    let mut table:Table = vec![];
+    let mut table = DFA(vec![]);
     build_table(&mut table, nfa, bucket, &mut BTreeMap::new());
     table
 }
@@ -55,17 +51,18 @@ pub fn into_dfa<'a>(nfa: &'a NFA)->Table<'a>{
 // subset_construction_implementation_flowchart.drawio
 //
 fn build_table<'a>(
-    table:  &mut Table<'a>,
+    table:  &mut DFA<'a>,
     nfa:    &'a NFA,
     bucket: Bucket<'a>,
     state:  &mut BTreeMap<Vec<usize>,usize>,
 ) -> Option<usize>{
-    let size = table.len(); 
-    // Checks
-    //
-    //
+
+    let size = table.0.len(); 
+    // every leaf is a Match
+    // so if bucket is empty we push an empty vec with the bool true
     if  bucket.0.is_empty() {
-        return Some(size-1);
+        table.0.push((vec![],true));
+        return Some(size);
     }
 
     // Preallocate row inside the table
@@ -73,7 +70,7 @@ fn build_table<'a>(
     // so we can add the created row variable
     // once it is done being built
     let mut row = vec![];  
-    table.push(vec![]); 
+    table.0.push((vec![],bucket.1)); 
 
     for (rule, indexs) in bucket.0 {
         
@@ -87,20 +84,11 @@ fn build_table<'a>(
         // Collapses same rules togheter through the use of a ordered map (BTreeMap)
         // It can not be IterResult agnostic
         // the bucket treats Matches as comparables too outs
-        //
-        //
-        // P.S FOR NOW IT IS SOMETHING I NEED TO FIX
-        // FIXME: { 
-        //  Make function handle IterResult::Match the appropriate way
-        //  it needs to behave the same as outs 
-        //  right now treated as different
-        //
-        // }
-        let mut new_bucket = Bucket(BTreeMap::new());
+        let mut new_bucket = Bucket(BTreeMap::new(),false);
         for result in list {
             match result {
                 IterResult::Match=>{ 
-                 
+                    new_bucket.1 = true; 
                 }
                 IterResult::Out(r, i)=>new_bucket.0
                                                  .entry(r)
@@ -119,26 +107,25 @@ fn build_table<'a>(
         //
         if let Some(&i) = state.get(&key) {
 
-            row.push(Row::Out(rule,i)); 
+            row.push((rule,i));
         } else {
 
             state.insert(key.clone(),size); 
             if let Some(i) =build_table(table, nfa, new_bucket, state){
-                row.push(Row::Out(rule, i));     
+                row.push((rule, i));     
             }
         }
 
     };
     //adds data to row
     //creates this effect of 
-    table[size] = row;
+    table.0[size].0 = row;
     Some(size)
 }
 
 
 
-struct Bucket<'a>(BTreeMap<&'a Rule,Vec<usize>>);
-
+struct Bucket<'a>(BTreeMap<&'a Rule,Vec<usize>>,bool);
 impl<'a> Bucket<'a> {
     //return all the indexs concerned in the nfa
     //It used as a key to see if state as already been traversed before
@@ -161,41 +148,60 @@ mod test {
     use crate::make_nfa;
 
     //visual test not a real proof that it works
-    //please refer to the ones below
+    //please refer to the ones below using cursors
     #[test]
     pub fn test_dfa(){
         let nfa = make_nfa!("a(bc)*|def");
         println!("-------------- NFA ---------------");
-        println!("{}\n\n",nfa);      
+        println!("{}\n",nfa);      
 
 
         println!("-------------- DFA ---------------");
-        let table = into_dfa(&nfa);
-        for row in table {
-            println!("{:?}",row)
-        }
+        let dfa = into_dfa(&nfa);
+        println!("{}",dfa); 
     }
-
-    //
-    //
     #[test]
     pub fn test_zero_or_more(){
+
     }
-    //
-    //
     #[test]
     pub fn test_one_or_more(){
     }
-    //
-    //
     #[test]
     pub fn test_zero_or_one(){
     }
-    //
-    //
     #[test] 
     pub fn test_crazy_string(){
 
     }
+}
+
+
+//------------------- display implimentation ------------------------//
+impl<'a> fmt::Display for DFA<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>)->fmt::Result {
+        writeln!(f,"DFA [")?;
+
+        for (i,(row,matched)) in self.0.iter().enumerate() {
+            write!(f,"{}- [ ",i)?;
+            
+            let mut first = true;
+            for (rule,index) in row.iter() {
+                if !first { write!(f,", ")?; }
+                first = false;
+
+                write!(f,"{} -> {}",rule,index)?;
+            }
+            if *matched {
+            if !row.is_empty(){
+                write!(f,", ")?;
+            }
+                write!(f,"Match")?;
+            }
+            writeln!(f," ]")?;
+        }
+        writeln!(f,"]")
+    }
+
 }
 

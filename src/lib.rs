@@ -3,7 +3,6 @@ mod dfa;
 mod graph;
 mod iterator;
 pub mod cursor;
-mod builders;
 pub use iterator::{NfaBfsIter,IterResult};
 
 pub use nfa::NFA;
@@ -32,16 +31,23 @@ pub enum Token {
 ///
 #[macro_export]
 macro_rules! make_nfa {
-    ($ ( $x:expr ),+ ) => {{
+    ($ ( $x:expr ),+ $(,)?) => {{
         
             let mut s = String::new();
             $(
-                if s.len() != 0 {
+                if !s.is_empty() {
                     s.push('|')
                 }
                 s.push_str($x);
             )+
             $crate::Parser::new(&s,$crate::nfa::NFA::init()).parse()      
+    }};
+}
+#[macro_export]
+macro_rules! make_dfa {
+    ($ ($x:expr),+ $(,)?)=> {{
+        $crate::make_nfa!($($x),+).determinize()
+
     }};
 }
 

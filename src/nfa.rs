@@ -1,6 +1,6 @@
 use std::fmt::Formatter;
 
-use crate::{graph::*};
+use crate::{graph::*, DFA};
 use crate::cursor::{FSACursor,FSARestartCursor};
 
 
@@ -77,15 +77,16 @@ impl NFA {
         FSARestartCursor::init(self.cursor())
     }
 
-    //pub(crate)fn iter_dfs(&self)->DFA<'_> {
-        //DfaBuilder::init(self).into_dfa()
-    //}
+    pub fn determinize(&self)->DFA<'_> {
+        DFA::init(self)
+    }
 }
 use std::fmt;
 impl fmt::Display for NFA {
     fn fmt(&self,f:&mut fmt::Formatter<'_>)-> fmt::Result {
         writeln!(f,"NFA:[")?;
-        for state in self.states.iter() {
+        for (i,state) in self.states.iter().enumerate() {
+            write!(f,"{}- ",i)?;
             match state{
                 State::Match=>      writeln!(f,"[ Match ]")?,
                 State::Out(r,i)=>   writeln!(f,"[ Out {} -> {} ]",r,i)?,
