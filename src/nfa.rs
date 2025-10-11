@@ -1,6 +1,7 @@
-use crate::{graph::*, DFA};
+use std::fmt::Formatter;
+
+use crate::{graph::*};
 use crate::cursor::{FSACursor,FSARestartCursor};
-use crate::builders::DfaBuilder;
 
 
 #[derive(Debug)]
@@ -80,7 +81,21 @@ impl NFA {
         //DfaBuilder::init(self).into_dfa()
     //}
 }
+use std::fmt;
+impl fmt::Display for NFA {
+    fn fmt(&self,f:&mut fmt::Formatter<'_>)-> fmt::Result {
+        writeln!(f,"NFA:[")?;
+        for state in self.states.iter() {
+            match state{
+                State::Match=>      writeln!(f,"[ Match ]")?,
+                State::Out(r,i)=>   writeln!(f,"[ Out {} -> {} ]",r,i)?,
+                State::Split(l,r)=> writeln!(f,"[ Split {}, {} ]",l,r)?,
+            };
+        }
+        writeln!(f,"]")
+    }
 
+}
 
 
 
@@ -101,6 +116,7 @@ impl Graph for NFA {
             '.'=> self.malloc(State::Out(Rule::Any,0)), 
             _  => self.malloc(State::Out(Rule::Equal(c),0)),
         };
+        
 
         let out = vec![DanglingOuts::Out1(start)];
 

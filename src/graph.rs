@@ -101,12 +101,11 @@ pub trait Graph: Sized {
 
 
 
-#[derive(Debug,Hash,PartialEq, Eq)]
+#[derive(Debug,PartialEq, Eq, PartialOrd)]
 pub enum Rule{
     Any,
     Equal(char),
 }
-
 impl Rule { 
     pub fn match_eq(&self,c:char)->bool{
         match &self {
@@ -119,6 +118,19 @@ impl Rule {
         &self
     }
 }
+impl Ord for Rule {
+    fn cmp(&self, other: &Rule)-> Ordering {
+        let result = match (self,other) {
+            (Rule::Any,     Rule::Any)      =>Ordering::Equal,
+            (Rule::Equal(_),Rule::Any)      =>Ordering::Less,
+            (Rule::Any,     Rule::Equal(_)) =>Ordering::Greater,
+            (Rule::Equal(x),Rule::Equal(y)) =>x.cmp(y)
+
+        };
+        result
+    }
+}
+
 
 #[derive(Debug)]
 pub enum DanglingOuts {
@@ -135,7 +147,7 @@ pub struct Frag {
 
 //---------------Display Implimentation----------------//afs/
 
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 impl fmt::Display for Rule {
 
     fn fmt(&self, f: &mut fmt::Formatter)-> fmt::Result{

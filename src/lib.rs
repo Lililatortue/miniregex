@@ -1,9 +1,10 @@
 mod nfa;
 mod dfa;
-mod fst;
 mod graph;
+mod iterator;
 pub mod cursor;
 mod builders;
+pub use iterator::{NfaBfsIter,IterResult};
 
 pub use nfa::NFA;
 pub use dfa::{DFA};
@@ -65,7 +66,8 @@ impl<'a, T:Graph> Iterator for Parser<'a, T> {
 }
 
 
-
+// abc (bb)+ | def
+// abc bb || abcdef
 impl<'a, T: Graph> Parser<'a, T> {
 //------------------------logic------------------------//
     fn alternation(&mut self)->Vec<Frag> {
@@ -215,11 +217,11 @@ mod tests {
     use super::*;
     #[test]
     pub fn test_nfa_cursor(){
-        let fsa = make_nfa!("a(bb)+|d");
-        let bad_test_cursor_one = fsa.cursor();
-        let bad_test_cursor_two = fsa.cursor();
-        let true_test_cursor_one = fsa.cursor();
-        let true_test_cursor_two = fsa.cursor();
+        let nfa = make_nfa!("a(bb)+|d");
+        let bad_test_cursor_one = nfa.cursor();
+        let bad_test_cursor_two = nfa.cursor();
+        let true_test_cursor_one = nfa.cursor();
+        let true_test_cursor_two = nfa.cursor();
             
         assert_eq!(false,bad_test_cursor_one.match_full("abc"));
         assert_eq!(false,bad_test_cursor_two.match_full("fff"));
