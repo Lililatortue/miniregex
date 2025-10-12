@@ -229,18 +229,18 @@ mod tests {
         let true_test_cursor_one = nfa.cursor();
         let true_test_cursor_two = nfa.cursor();
             
-        assert_eq!(false,bad_test_cursor_one.match_full("abc"));
-        assert_eq!(false,bad_test_cursor_two.match_full("fff"));
-        assert_eq!(true, true_test_cursor_one.match_full("ddddd"));
-        assert_eq!(true, true_test_cursor_two.match_full("abbhf"));
+        assert_eq!(false,bad_test_cursor_one.soft_fullmatch("abc"));
+        assert_eq!(false,bad_test_cursor_two.soft_fullmatch("fff"));
+        assert_eq!(true, true_test_cursor_one.soft_fullmatch("ddddd"));
+        assert_eq!(true, true_test_cursor_two.soft_fullmatch("abbhf"));
 
         
         let comment_line_graph = make_nfa!(r"//\(.*\)", "lol");
         let mut test_restart_cursor = comment_line_graph.restart_cursor();
        
-        assert_eq!(true, test_restart_cursor.match_full("//( sadfjlsdf )"));
-        assert_eq!(true, test_restart_cursor.match_full("lol"));
-        assert_eq!(false,test_restart_cursor.match_full("//(sajflsaf"));
+        assert_eq!(true, test_restart_cursor.soft_fullmatch("//( sadfjlsdf )"));
+        assert_eq!(true, test_restart_cursor.soft_fullmatch("lol"));
+        assert_eq!(false,test_restart_cursor.soft_fullmatch("//(sajflsaf"));
 
     }
     

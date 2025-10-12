@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap};
 use std::fmt::{self, Formatter};
+use crate::cursor::DFACursor;
 use crate::{graph::Rule,NFA};
 use crate::iterator::{NfaBfsIter,IterResult};
 
@@ -25,8 +26,9 @@ impl<'a> DFA<'a> {
         let Some(list) = NfaBfsIter::from_index(nfa,nfa.get_start_id()) else {
             panic!("Error: Cannot build dfa from empty nfa"); 
         };
+        let mut dfa = DFA{table:vec![],start: 0};
         let mut bucket = Bucket::init();
-        
+
         for result in list {
             match result {
                 IterResult::Match=> bucket.matched = true,
@@ -34,16 +36,15 @@ impl<'a> DFA<'a> {
                                               .entry(r)
                                               .or_default()
                                               .push(*i),
-                IterResult::Epsilon(i)=>bucket.epsillon = Some(i),
             }
         }
 
-        let mut table = DFA{table:vec![],start: 0};
-        table.start = build_table(&mut table, nfa, bucket, BTreeMap::new());
-        table
+        dfa.start = build_table(&mut dfa, nfa, bucket, BTreeMap::new());
+        dfa
     }
 
-    pub fn start(&self)->usize {
+    
+    pub(crate)fn start(&self)->usize {
         self.start
     }
     pub(crate)fn row(&self,id:usize)->&(Vec<(&'a Rule,usize)>,bool){
@@ -56,9 +57,10 @@ impl<'a> DFA<'a> {
     pub fn minimalize(&self) {
 
     }
-    pub fn cursor(&self) {
-
+    pub fn cursor(&self)->DFACursor<'_> {
+        DFACursor::init(self)
     }
+
     pub fn restart_cursor(&self) {
 
     }
@@ -72,10 +74,12 @@ impl<'a> DFA<'a> {
 
 
 
-// Recursively builds row of the table
+// Recursively builds row of the table replicates subset construction algorithm
 // While it travels through the NFA PostOrder traversal, it Builds the DFA in Inorder Traversal
 //
 // P.S
+// No code found that mimics this algorithm had to build it on my own
+//
 // For a more visual representation of the logic
 // pls refer to the schemas: 
 // subset_construction_implementation_flowchart.drawio
@@ -88,32 +92,21 @@ fn build_table<'a>(
 ) -> usize{
 
     let size = dfa.table.len(); 
-    // every leaf is a Match
-    // so if bucket is empty we push an empty vec with the bool true
-    if  bucket.map.is_empty() { 
-        state.insert(bucket.state(),size);
-        dfa.table.push((vec![],true));
-        return size; 
-    }
-
     // Preallocate row inside the table
     // and keep a pointer to it
     // so we can add the created row variable
     // once it is done being built
-    let mut row = vec![];  
     dfa.table.push((vec![],bucket.matched)); 
+ 
+    let mut row = vec![];  
 
     for (rule, indexs) in bucket.map {
-        
         // Get the list of next nodes that are attached to the current node
         // using BFS style approach. 
         // Is agnostic on wether the its a match or an out 
         let Some(list) = NfaBfsIter::from_indexs(nfa,indexs) else {
-            println!("continue {}",rule);
-            continue
+            continue;
         };
-
-        println!("list {:?}", &list);
         // Collapses same rules togheter through the use of a ordered map (BTreeMap)
         // It can not be IterResult agnostic
         // the bucket treats Matches as comparables too outs
@@ -121,48 +114,48 @@ fn build_table<'a>(
 
         for result in list {
             match result {
-                IterResult::Match=>{ 
-                    new_bucket.matched = true;
-                }
+                IterResult::Match=>new_bucket.matched = true,
                 IterResult::Out(r, i)=>new_bucket.map
                                                  .entry(r)
                                                  .or_default()
                                                  .push(*i),
-                IterResult::Epsilon(i)=>new_bucket.epsillon=Some(i),
             }
-        }
-        
-        let key = new_bucket.state();
-
+        }        
+        //let key  = new_bucket.state();
         // Checks if node was already constructed previously:
         // - if it was (if):       it creates the rule and returns the index to that previously
         //                         constructed node
-        // - if it wasn't (else):  1- we add the new_bucket key to the BTreeMap
-        //                         2- travels recursively inside the new_bucket to create it
-        if let Some(&i) = state.get(&key) {
-            row.push((rule,i));
+        // - if it wasn't (else):  0- we add the new_bucket key to the BTreeMap
+        //                         1- travels recursively inside the new_bucket to create it
+        let key = new_bucket.state();
+
+        let i = if let &Some(i) = &state.get(&key) {
+            *i
         } else {
-            state.insert(key,size); 
-            let i = build_table(dfa, nfa, new_bucket, state.clone());
-            row.push((rule, i));      
-        }
-    };
-    //adds data to row
-    //creates this effect of 
+            state.insert(key,dfa.table.len());//not size because its key to futur
+            build_table(dfa, nfa, new_bucket, state.clone())
+        };
+
+        row.push((rule, i));
+    }
+
     dfa.table[size].0 = row;
     size
 }
 
 
 
+
+//Plain old data that facilitates row manipulation
+//
+//
 struct Bucket<'a>{
-    epsillon:Option<usize>,
     map:BTreeMap<&'a Rule,Vec<usize>>,
     matched:bool
 }
 impl<'a> Bucket<'a> {
     fn init()->Self{
-        Bucket {epsillon:None, map:BTreeMap::new(), matched:false}
+        Bucket {map:BTreeMap::new(), matched:false}
     }
     //return all the indexs concerned in the nfa
     //It used as a key to see if state as already been traversed before
@@ -188,7 +181,7 @@ mod test {
     //please refer to the ones below using cursors
     #[test]
     pub fn test_dfa(){
-        let nfa = make_nfa!("a(bc)*");
+        let nfa = make_nfa!("a(bc)*d|def");
         println!("-------------- NFA ---------------");
         println!("{}\n",nfa);      
 

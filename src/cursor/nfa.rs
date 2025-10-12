@@ -78,7 +78,7 @@ impl<'a> FSACursor<'a> {
     }
 
     
-    pub fn match_full(mut self, s:&str)->bool{
+    pub fn soft_fullmatch(mut self, s:&str)->bool{
         for c in s.chars() {
             let result = self.match_eq(c);
             match result {
@@ -90,6 +90,7 @@ impl<'a> FSACursor<'a> {
         //WARNING: maybe needs a last check on self.rules
         false
     }
+
 }
 ///description:
 ///Internally mutates the cursor when an Invalid Or Match states occurs 
@@ -131,7 +132,7 @@ impl<'a> FSARestartCursor<'a> {
     ///returns: 
     ///bool (invalid->false, match->true)
     ///
-    pub fn match_full(&mut self, s:&str)->bool{
+    pub fn soft_fullmatch(&mut self, s:&str)->bool{
         for c in s.chars() {
             let state = self.match_eq(c);
             match state {
