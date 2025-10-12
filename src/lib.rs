@@ -1,6 +1,17 @@
-use crate::graph::*;
 
-pub mod graph;
+mod nfa;
+mod dfa;
+mod graph;
+mod iterator;
+pub mod cursor;
+pub use iterator::{NfaBfsIter,IterResult};
+
+
+pub use nfa::NFA;
+pub use dfa::{DFA};
+pub use cursor::{FSACursor,FSARestartCursor};
+
+use graph::*;
 /*
 pub enum Token {
     Alt,            // Concat  | '|' Concat
@@ -11,22 +22,39 @@ pub enum Token {
 }
 */
 
-//a macro that takes multiple strings and creates one FSA
+///description:
+///takes multiple strings and creates one big nfa
+///
+///parameters:
+///one or more strings
+///
+///return
+///NFA
+///
 #[macro_export]
-macro_rules! make_fsa {
-    ($ ( $x:expr ),+ ) => {{
+macro_rules! make_nfa {
+    ($ ( $x:expr ),+ $(,)?) => {{
         
             let mut s = String::new();
             $(
-                if s.len() != 0 {
+                if !s.is_empty() {
+
                     s.push('|')
                 }
                 s.push_str($x);
             )+
-            Parser::new(&s,$crate::graph::fsa::FSA::init()).parse()      
+
+            $crate::Parser::new(&s,$crate::graph::fsa::FSA::init()).parse()      
     }};
 }
 
+#[macro_export]
+macro_rules! make_dfa {
+    ($ ($x:expr),+ $(,)?)=> {{
+        $crate::make_nfa!($($x),+).determinize()
+
+    }};
+}
 
 
 //#[macro_export]
@@ -35,6 +63,8 @@ macro_rules! make_fsa {
     //   let mut FSA
   //  };
 //}
+
+
 
 
 
@@ -55,7 +85,10 @@ impl<'a, T:Graph> Iterator for Parser<'a, T> {
 
 
 
+
 use crate::graph::Frag;
+
+
 impl<'a, T: Graph> Parser<'a, T> {
 //------------------------logic------------------------//
     fn alternation(&mut self)->Vec<Frag> {
@@ -204,26 +237,26 @@ impl<'a, T: Graph> Parser<'a, T> {
 mod tests {
     use super::*;
     #[test]
-    pub fn test(){
-        let graph = make_fsa!("a(bb)+|d");
-        let bad_test_cursor_one = graph.cursor();
-        let bad_test_cursor_two = graph.cursor();
-        let true_test_cursor_one = graph.cursor();
-        let true_test_cursor_two = graph.cursor();
+
+    pub fn test_nfa_cursor(){
+        let nfa = make_nfa!("a(bb)+|d");
+        let bad_test_cursor_one = nfa.cursor();
+        let bad_test_cursor_two = nfa.cursor();
+        let true_test_cursor_one = nfa.cursor();
+        let true_test_cursor_two = nfa.cursor();
             
-        assert_eq!(false,bad_test_cursor_one.match_full("abc"));
-        assert_eq!(false,bad_test_cursor_two.match_full("fff"));
-        assert_eq!(true, true_test_cursor_one.match_full("ddddd"));
-        assert_eq!(true, true_test_cursor_two.match_full("abbhf"));
+        assert_eq!(false,bad_test_cursor_one.soft_fullmatch("abc"));
+        assert_eq!(false,bad_test_cursor_two.soft_fullmatch("fff"));
+        assert_eq!(true, true_test_cursor_one.soft_fullmatch("ddddd"));
+        assert_eq!(true, true_test_cursor_two.soft_fullmatch("abbhf"));
 
         
-        let comment_line_graph = make_fsa!(r"//\(.*\)", "lol");
-        let true_test_cursor = comment_line_graph.cursor();
-        let bad_test_cursor  = comment_line_graph.cursor();
-        
-        assert_eq!(true,true_test_cursor.match_full("//( sadfjlsdf )"));
-        assert_eq!(false,bad_test_cursor.match_full("//(sajflsaf"));
-
+        let comment_line_graph = make_nfa!(r"//\(.*\)", "lol");
+        let mut test_restart_cursor = comment_line_graph.restart_cursor();
+       
+        assert_eq!(true, test_restart_cursor.soft_fullmatch("//( sadfjlsdf )"));
+        assert_eq!(true, test_restart_cursor.soft_fullmatch("lol"));
+        assert_eq!(false,test_restart_cursor.soft_fullmatch("//(sajflsaf"));
     }
     
 }
