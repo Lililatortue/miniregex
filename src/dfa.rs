@@ -1,17 +1,21 @@
 use std::collections::{BTreeMap};
 use std::fmt::{self, Formatter};
-use crate::cursor::DFACursor;
-use crate::{graph::Rule,NFA};
-use crate::iterator::{NfaBfsIter,IterResult};
+use crate::nfa::State;
+use crate::utils;
+use crate::{graph::Rule,Nfa};
 
 
-//plain old data
-//used for this transformation
-pub struct DFA<'a>{
+/// Stands for: 
+/// Deterministic Finite Automaton
+///
+/// description:
+/// 
+///
+pub struct Dfa<'a>{
     table:Vec<(Vec<(&'a Rule,usize)>,bool)>,
     start: usize,
 }
-impl<'a> DFA<'a> {
+impl<'a> Dfa<'a> {
     /// description:
     /// Creates a dfa from a reference to an nfa
     /// 
@@ -22,20 +26,21 @@ impl<'a> DFA<'a> {
     /// Table (Vec<Vec<&'a rules, usize >>) 
     /// where lifetime a is the lifetime of nfa
     ///
-    pub(crate)fn init(nfa:&'a NFA)->Self{
-        let Some(list) = NfaBfsIter::from_index(nfa,nfa.get_start_id()) else {
-            panic!("Error: Cannot build dfa from empty nfa"); 
-        };
-        let mut dfa = DFA{table:vec![],start: 0};
+    pub(crate)fn init(nfa:&'a Nfa)->Self{
+        let list = nfa.start_states();
+        if list.is_empty() { panic!("invalid nfa it is empty") }
+
+        let mut dfa = Dfa{table:vec![],start: 0};
         let mut bucket = Bucket::init();
 
         for result in list {
             match result {
-                IterResult::Match=> bucket.matched = true,
-                IterResult::Out(r, i)=> bucket.map
-                                              .entry(r)
-                                              .or_default()
-                                              .push(*i),
+                State::Match(_)=> bucket.matched = true,
+                State::Out(r, i)=> bucket.map
+                                         .entry(r)
+                                         .or_default()
+                                         .push(*i),
+                _ => unreachable!("should be flatten split shouldn't exist")
             }
         }
 
@@ -47,6 +52,7 @@ impl<'a> DFA<'a> {
     pub(crate)fn start(&self)->usize {
         self.start
     }
+
     pub(crate)fn row(&self,id:usize)->&(Vec<(&'a Rule,usize)>,bool){
         if self.table.len() < id {
             panic!("Out of bounds index");
@@ -57,9 +63,9 @@ impl<'a> DFA<'a> {
     pub fn minimalize(&self) {
 
     }
-    pub fn cursor(&self)->DFACursor<'_> {
-        DFACursor::init(self)
-    }
+    //pub fn cursor(&self)->DFACursor<'_> {
+    //    DFACursor::init(self)
+    //}
 
     pub fn restart_cursor(&self) {
 
@@ -71,22 +77,17 @@ impl<'a> DFA<'a> {
 
 //-------------------------- algorithm -----------------------//
 
-
-
-
 // Recursively builds row of the table replicates subset construction algorithm
 // While it travels through the NFA PostOrder traversal, it Builds the DFA in Inorder Traversal
 //
-// P.S
-// No code found that mimics this algorithm had to build it on my own
 //
 // For a more visual representation of the logic
 // pls refer to the schemas: 
 // subset_construction_implementation_flowchart.drawio
 //
 fn build_table<'a>(
-    dfa:  &mut DFA<'a>,
-    nfa:    &'a NFA,
+    dfa:  &mut Dfa<'a>,
+    nfa:    &'a Nfa,
     bucket: Bucket<'a>,
     mut state:  BTreeMap<Vec<usize>,usize>,
 ) -> usize{
@@ -104,21 +105,22 @@ fn build_table<'a>(
         // Get the list of next nodes that are attached to the current node
         // using BFS style approach. 
         // Is agnostic on wether the its a match or an out 
-        let Some(list) = NfaBfsIter::from_indexs(nfa,indexs) else {
-            continue;
-        };
+        let list = utils::states_from_index(nfa,&indexs);
+        if list.is_empty() {continue;}
         // Collapses same rules togheter through the use of a ordered map (BTreeMap)
         // It can not be IterResult agnostic
         // the bucket treats Matches as comparables too outs
         let mut new_bucket = Bucket::init();
 
-        for result in list {
+        for result in list.iter() {
             match result {
-                IterResult::Match=>new_bucket.matched = true,
-                IterResult::Out(r, i)=>new_bucket.map
+                State::Match(_)=>new_bucket.matched = true,
+                State::Out(r, i)=>new_bucket.map
                                                  .entry(r)
                                                  .or_default()
                                                  .push(*i),
+                _ => unreachable!("should be flatten out")
+
             }
         }        
         //let key  = new_bucket.state();
@@ -129,11 +131,12 @@ fn build_table<'a>(
         //                         1- travels recursively inside the new_bucket to create it
         let key = new_bucket.state();
 
-        let i = if let &Some(i) = &state.get(&key) {
-            *i
-        } else {
-            state.insert(key,dfa.table.len());//not size because its key to futur
-            build_table(dfa, nfa, new_bucket, state.clone())
+        let i = match &state.get(&key) {
+            Some(i)=>**i,
+            None => { 
+                state.insert(key,dfa.table.len());//not size because its key to futur
+                build_table(dfa, nfa, new_bucket, state.clone())
+            } 
         };
 
         row.push((rule, i));
@@ -187,7 +190,7 @@ mod test {
 
 
         println!("-------------- DFA ---------------");
-        let dfa = DFA::init(&nfa);
+        let dfa = Dfa::init(&nfa);
         println!("{}",dfa); 
     }
     #[test]
@@ -208,7 +211,7 @@ mod test {
 
 
 //------------------- display implimentation ------------------------//
-impl<'a> fmt::Display for DFA<'a> {
+impl<'a> fmt::Display for Dfa<'a> {
     fn fmt(&self, f: &mut Formatter<'_>)->fmt::Result {
         writeln!(f,"start: {}, DFA [",self.start)?;
 

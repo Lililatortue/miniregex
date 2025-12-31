@@ -1,8 +1,7 @@
 
 
-pub mod fsa;
 
-///description:
+//description:
 ///trait that allows function to be read by Recursive Descent Parser in lib.rs
 ///
 ///
@@ -108,6 +107,9 @@ pub trait Graph: Sized {
 
 
 
+
+
+#[derive(Hash)]
 #[derive(Debug,PartialEq, Eq, PartialOrd)]
 pub enum Rule{
     Any,
@@ -163,7 +165,7 @@ impl fmt::Display for Rule {
 
     fn fmt(&self, f: &mut fmt::Formatter)-> fmt::Result{
         match self {
-            Rule::Equal(r)=> write!(f, "Equal-> {}", r),
+            Rule::Equal(r)=> write!(f, "Equal: {}", r),
             Rule::Any     => write!(f, "Any"),
         }
     }

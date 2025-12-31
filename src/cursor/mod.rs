@@ -1,5 +1,15 @@
-mod nfa;
-mod dfa;
+mod lazydfa;
+mod lazydft;
 
-pub use nfa::{FSACursor,FSARestartCursor,CursorResult};
-pub use dfa::{DFACursor,DFARestartCursor};
+
+pub use lazydfa::LazyDfa;
+pub use lazydft::LazyDft;
+ 
+
+#[derive(Debug,PartialEq)]
+pub enum DfaResult {
+    Invalid,
+    Valid,
+    Match, 
+}
+

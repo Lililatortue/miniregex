@@ -1,36 +1,39 @@
+use crate::{graph::*, Dfa, LazyDfa};
 
 
-use crate::{graph::*, DFA};
-use crate::cursor::{FSACursor,FSARestartCursor};
+//basic implementation of it was taken from there
+//
+//https://github.com/BurntSushi/rsc-regexp/blob/master/idiomatic-translation/nfa.rsc
 
 
 #[derive(Debug)]
 pub enum State {
     Out(Rule, Id),
     Split(Id, Id),
-    Match
+    Match(Option<usize>)// for indexing
 }
-//https://github.com/BurntSushi/rsc-regexp/blob/master/idiomatic-translation/nfa.rsc
+
+
 
 ///description:
 ///FSA -> Finite state automata,
 ///A graph that in which as rules to connect to next node
 ///
 #[derive(Debug)]
-pub struct NFA {
+pub struct Nfa {
     start: Id,
     states: Vec<State>,  
 }
 
-impl NFA {
+impl Nfa {
     ///description:
     ///Default initialisation of FSA
     ///
     ///return:
     ///FSA{start: 0 , states: empty}
     ///
-    pub fn init()->NFA{
-        NFA{start:0,states: vec![]}
+    pub fn init()->Nfa{
+        Nfa{start:0,states: vec![]}
     }
        
     ///description:
@@ -45,53 +48,122 @@ impl NFA {
         start
     }
 
-    pub(crate)fn get_states(&self)-> &[State] {
+    //description
+    //indexs match to allows returning of a number on a match
+    //
+    //
+    //
+    //
+    pub(crate)fn index_match(&mut self, index: usize) {
+        let len = self.states.len();
+        match self.states[len]{
+            State::Match(ref mut i)=> *i=Some(index),
+            _=> unreachable!("last element of vec should always be match before indexing"),
+        };
+    }
+    pub(crate)fn states(&self)-> &[State] {
         &self.states
     }
-    pub fn get_start(&self)-> &State {
-        &self.states[self.start]
-    }
-    pub(crate)fn get_start_id(&self)->usize {
+    pub(crate)fn start(&self)->usize{
         self.start
     }
-    ///description:
-    ///creates a cursor
-    ///A cursor allows to use the graph and check if a string matches the FSA
-    ///
-    ///return:
-    ///FSACursor
-    ///
-    pub fn cursor(&self)-> FSACursor<'_>{
-        FSACursor::init(self)
+
+    pub(crate)fn get(&self, index: usize)-> Option<&State> {
+        self.states.get(index)
     }
 
-    ///description:
-    ///creates a restartable cursor
-    ///A restartable cursor allows u to navigate a graph through a string and if state is invalid
-    ///or match the cursor goes back to the beginning
-    ///
-    ///return:
-    ///FSARestartCursor
-    ///
-    pub fn restart_cursor(&self) -> crate::nfa::FSARestartCursor<'_>{
-        FSARestartCursor::init(self.cursor())
+    pub(crate)fn is_match(&self, index: usize)-> bool {
+        if let Some(State::Match(_)) = self.states.get(index){
+            return true;
+        }
+        false
     }
 
-    pub fn determinize(&self)->DFA<'_> {
-        DFA::init(self)
+    // description:
+    // Get non-epsillon start
+    //
+    // return:
+    // Vec<&state>
+    //
+    // example: if s0 -> s1 - A -> s2
+    //                -> s3 - B -> s3
+    //          then return is s1 & s2 states
+    //          
+    pub(crate) fn start_states(&self)-> Vec<&State> {
+        let mut list = vec![];
+        let state= &self.states[self.start];
+        match state {
+            State::Split(left, right)=>{
+                list.extend(crate::utils::states_from_index(&self, &[*left,*right]))
+            }, 
+            _ => {
+                list.push(state);
+            }
+        }
+        list
+    }
+
+    // description:
+    // Get non-epsillon start
+    //
+    // return:
+    // Vec<&state>
+    //
+    // example: if s0 -> s1 - A -> s2
+    //                -> s3 - B -> s3
+    //          then return is s1 & s2 states
+    //          
+    pub(crate) fn start_index(&self)-> Vec<usize> {
+        let mut list = vec![];
+        let state= &self.states[self.start];
+        match state {
+            State::Match(_)=>(),
+
+            State::Out(_,next) =>list.push(*next),
+
+            State::Split(left, right)=>{
+                list.extend(crate::utils::next_index(&self, &[*left,*right]).1)
+            }, 
+        }
+        list
+    }
+    /// description:
+    /// Creates a lazy cursor that slowly builds a dfa's as the traverses
+    /// the a string
+    ///
+    /// return:
+    /// LazyDfa
+    ///
+    pub fn cursor(&self)-> LazyDfa<'_>{
+        LazyDfa::new(self)
+    }
+
+    pub fn determinize(&self)->Dfa<'_> {
+        Dfa::init(self)
     }
 }
+
+
+
+
+
+
 use std::fmt;
-impl fmt::Display for NFA {
+impl fmt::Display for Nfa {
     fn fmt(&self,f:&mut fmt::Formatter<'_>)-> fmt::Result {
         writeln!(f,"NFA:[")?;
         for (i,state) in self.states.iter().enumerate() {
             write!(f,"{}- ",i)?;
             match state{
-                State::Match=>      writeln!(f,"[ Match ]")?,
                 State::Out(r,i)=>   writeln!(f,"[ Out {} -> {} ]",r,i)?,
                 State::Split(l,r)=> writeln!(f,"[ Split {}, {} ]",l,r)?,
-            };
+                State::Match(option)=>  {
+                    match option {
+                        Some(i)=>writeln!(f,"[ Match->{} ]",i)?,
+                        None   =>writeln!(f,"[ Match ]")?,
+                    }                
+                }
+           };
         }
         writeln!(f,"]")
     }
@@ -99,9 +171,7 @@ impl fmt::Display for NFA {
 }
 
 
-
-
-impl Graph for NFA {
+impl Graph for Nfa {
     ///description:
     ///Adds a literal to states vector.
     ///A literal is a node that isnt connected to any other node 
@@ -115,7 +185,7 @@ impl Graph for NFA {
     fn literal(&mut self,c: char)->Frag {
         let start = match c {
             '.'=> self.malloc(State::Out(Rule::Any,0)), 
-            _  => self.malloc(State::Out(Rule::Equal(c),0)),
+             _ => self.malloc(State::Out(Rule::Equal(c),0)),
         };
         
 
@@ -129,7 +199,7 @@ impl Graph for NFA {
     ///
     ///parameters:
     /// e1:Frag  ->  head of new frag
-    /// e2: Frag ->  tail of new frag
+    /// e2:Frag  ->  tail of new frag
     ///
     ///return: Frag {start: e1.start, out: e2.outs }
     ///
@@ -194,7 +264,6 @@ impl Graph for NFA {
     ///return:
     ///
     fn alternation(&mut self,mut e1:Frag, e2:Frag)->Frag {
-
         let start = self.malloc(State::Split(e1.adresse, e2.adresse));
 
         e1.goto.extend(e2.goto);
@@ -209,15 +278,13 @@ impl Graph for NFA {
     ///return:
     ///
     fn finish(mut self, e: Frag)->Self {
-        let match_ = self.malloc(State::Match);
+        let match_ = self.malloc(State::Match(None));
         self.patch(&e.goto, match_); 
         self.start = e.adresse;
         self
     }
 
 
-    //https://github.com/BurntSushi/rsc-regexp/blob/master/idiomatic-translation/nfa.rsc
-    //his approach i prefer it more its explicit
 
     ///description:
     ///
@@ -248,7 +315,10 @@ impl Graph for NFA {
     }
 }
 
+#[cfg(test)]
+pub mod test{
 
+}
 
 
 

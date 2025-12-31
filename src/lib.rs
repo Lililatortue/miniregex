@@ -1,16 +1,15 @@
-
 mod nfa;
+pub use nfa::Nfa;
 mod dfa;
+pub use dfa::Dfa;
+
+
 mod graph;
-mod iterator;
+
 pub mod cursor;
-pub use iterator::{NfaBfsIter,IterResult};
+pub use cursor::{LazyDfa};
 
-
-pub use nfa::NFA;
-pub use dfa::{DFA};
-pub use cursor::{FSACursor,FSARestartCursor};
-
+mod utils;
 use graph::*;
 /*
 pub enum Token {
@@ -44,14 +43,14 @@ macro_rules! make_nfa {
                 s.push_str($x);
             )+
 
-            $crate::Parser::new(&s,$crate::graph::fsa::FSA::init()).parse()      
+            $crate::Parser::new(&s,$crate::nfa::Nfa::init()).parse()      
     }};
 }
 
 #[macro_export]
 macro_rules! make_dfa {
     ($ ($x:expr),+ $(,)?)=> {{
-        $crate::make_nfa!($($x),+).determinize()
+        $crate::make_nfa!($($x),+).determinize();
 
     }};
 }
@@ -63,10 +62,6 @@ macro_rules! make_dfa {
     //   let mut FSA
   //  };
 //}
-
-
-
-
 
 
 pub struct Parser<'a, T: Graph> {
@@ -106,7 +101,7 @@ impl<'a, T: Graph> Parser<'a, T> {
                     let Some(e2) = stack.pop() else {panic!("error 1")};
                     let Some(e1) = stack.pop() else {panic!("error 2")};
                     stack.push(self.graph.alternation(e1, e2));
-                   break;
+                    break;
                     },
                 ')' =>{return stack;}
                  _  => break,
@@ -122,8 +117,7 @@ impl<'a, T: Graph> Parser<'a, T> {
             if stack.len()>=2 {
                 let Some(e2) = stack.pop() else {panic!("not enough in stack to concat")};
                 let Some(e1) = stack.pop() else {panic!("not enough in stack to concat")};
-                stack.push(self.graph.concatenation(e1,e2));
-                
+                stack.push(self.graph.concatenation(e1,e2));         
             } else {
                 break;
             }
@@ -166,8 +160,6 @@ impl<'a, T: Graph> Parser<'a, T> {
         }
 
     }
-
-
     fn literal(&mut self, stack: &mut Vec<Frag>) {
 
         let Some(c)=self.next() else {return};
@@ -185,11 +177,10 @@ impl<'a, T: Graph> Parser<'a, T> {
             }
 
             c @ ('a'..='z'|
-                  'A'..='Z'|
-                  '1'..='9'|
-                  '/'|'.')=> 
-            {
-
+                 'A'..='Z'|
+                 '1'..='9'|
+                 '/' | '.' 
+                 )=> {
                 stack.push(self.graph.literal(c));
             }
 
@@ -239,24 +230,6 @@ mod tests {
     #[test]
 
     pub fn test_nfa_cursor(){
-        let nfa = make_nfa!("a(bb)+|d");
-        let bad_test_cursor_one = nfa.cursor();
-        let bad_test_cursor_two = nfa.cursor();
-        let true_test_cursor_one = nfa.cursor();
-        let true_test_cursor_two = nfa.cursor();
-            
-        assert_eq!(false,bad_test_cursor_one.soft_fullmatch("abc"));
-        assert_eq!(false,bad_test_cursor_two.soft_fullmatch("fff"));
-        assert_eq!(true, true_test_cursor_one.soft_fullmatch("ddddd"));
-        assert_eq!(true, true_test_cursor_two.soft_fullmatch("abbhf"));
-
-        
-        let comment_line_graph = make_nfa!(r"//\(.*\)", "lol");
-        let mut test_restart_cursor = comment_line_graph.restart_cursor();
-       
-        assert_eq!(true, test_restart_cursor.soft_fullmatch("//( sadfjlsdf )"));
-        assert_eq!(true, test_restart_cursor.soft_fullmatch("lol"));
-        assert_eq!(false,test_restart_cursor.soft_fullmatch("//(sajflsaf"));
     }
     
 }
