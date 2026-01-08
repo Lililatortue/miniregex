@@ -63,7 +63,6 @@ macro_rules! make_dfa {
   //  };
 //}
 
-
 pub struct Parser<'a, T: Graph> {
     buffer: Option<char>,
     graph: T,
