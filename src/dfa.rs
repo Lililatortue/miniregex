@@ -37,7 +37,7 @@ impl<'a> Dfa<'a> {
             match result {
                 State::Match(_)=> bucket.matched = true,
                 State::Out(r, i)=> bucket.map
-                                         .entry(r)
+                                         .entry(&r)
                                          .or_default()
                                          .push(*i),
                 _ => unreachable!("should be flatten split shouldn't exist")
@@ -63,15 +63,10 @@ impl<'a> Dfa<'a> {
     pub fn minimalize(&self) {
 
     }
+
     //pub fn cursor(&self)->DFACursor<'_> {
     //    DFACursor::init(self)
     //}
-
-    pub fn restart_cursor(&self) {
-
-    }
-    
-
 }
 
 

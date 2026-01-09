@@ -42,8 +42,7 @@ macro_rules! make_nfa {
                 }
                 s.push_str($x);
             )+
-
-            $crate::Parser::new(&s,$crate::nfa::Nfa::init()).parse()      
+           $crate::Parser::new(&s,$crate::nfa::Nfa::init()).parse()      
     }};
 }
 

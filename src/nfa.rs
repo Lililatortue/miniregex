@@ -134,7 +134,7 @@ impl Nfa {
     /// return:
     /// LazyDfa
     ///
-    pub fn cursor(&self)-> LazyDfa<'_>{
+    pub fn lazy(&self)-> LazyDfa<'_>{
         LazyDfa::new(self)
     }
 
