@@ -157,8 +157,6 @@ impl<'ctx> LazyDfa<'ctx> {
         return DfaResult::Valid;
     }
     
-
-
 }
 
 

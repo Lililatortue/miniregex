@@ -1,6 +1,7 @@
-mod nfa;
+pub mod nfa;
 pub use nfa::Nfa;
-mod dfa;
+pub mod dfa;
+
 pub use dfa::Dfa;
 
 
@@ -157,10 +158,21 @@ impl<'a, T: Graph> Parser<'a, T> {
             '\\'=> {
                 let p = match self.peek() {
                     Some(c@ ('('|')'|'{'|'}'|'*'))=> *c,
+
+                    Some('s')=> {
+                        stack.push(self.graph.literal(' '));
+                        return
+                    }
+                    Some('n')=> {
+                        stack.push(self.graph.literal('\n'));
+                        return
+                    }
+
                     _ =>{
                         stack.push(self.graph.literal(c));
                         return
                     }
+                    
                 };
                 self.next();
                 stack.push(self.graph.literal(p));
@@ -173,8 +185,8 @@ impl<'a, T: Graph> Parser<'a, T> {
                  )=> {
                 stack.push(self.graph.literal(c));
             }
-
-            '('=> {
+            ' ' => (),
+            '(' => {
                 stack.extend(self.alternation());
                 match self.next() {
                     Some(')') => return,
